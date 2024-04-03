@@ -20,14 +20,19 @@ for dict in yearOfDay:
     for key, value in dict.items():
         for day in value:
             if int(day) < 10: day = "0" + day
-            if key < 10: date = "2023" + "0" + str(key) + day
-            else : date = "2023" + str(key) + day
+            if key < 10: 
+                date = "2023-" + "0" + str(key) + "-" + day
+            else : 
+                date = "2023-" + str(key) + "-" + day
             print(date + "\n--------")
 
-            url = f'https://www.twse.com.tw/exchangeReport/MI_INDEX?response=json&date={date}&type=ALLBUT0999'
+            url = f'https://www.twse.com.tw/exchangeReport/MI_INDEX?response=json&date={date.replace('-', '')}&type=ALLBUT0999'
             req = requests.get(url)
             reqJson = req.json()
             if reqJson['stat'] == 'OK':
                 stock = pd.DataFrame(reqJson['data9'], columns = reqJson['fields9'])
+                stock['date'] = date 
                 data = pd.concat([data, stock])
         time.sleep(5)
+
+data.to_csv('../DataScience/stock_data_2023.csv')
