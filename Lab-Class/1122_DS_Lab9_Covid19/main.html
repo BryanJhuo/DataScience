@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="utf-8" />
+        <link rel="icon" type="image/x-icon" href="./favicon.png">
+
+        <title>Trajectory of World COVID-19 Confirmed Cases</title>
+
+        <link rel="stylesheet" href="https://pyscript.net/alpha/pyscript.css" />
+        <script defer src="https://pyscript.net/alpha/pyscript.js"></script>
+
+        <py-env>
+            - numpy
+            - pandas
+            - matplotlib
+            - altair
+            - vega_datasets
+        </py-env>
+    </head>
+
+    <body style="padding-top: 20px; padding-right: 20px; padding-bottom: 20px; padding-left: 20px">
+        <h1>Micrograd - A tiny Autograd engine (with a bite! :))</h1><br>
+        <py-repl>
+import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
+from pyodide.http import open_url
+
+url = 'https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data/csse_covid_19_time_series/time_series_covid19_confirmed_global.csv'
+confirmed_cases = pd.read_csv(open_url(url))
+confirmed_cases
+        </py-repl><br>
+
+<py-repl>
+confirmed_cases.drop(columns=['Lat','Long'], inplace=True)
+confirmed_cases
+</py-repl>>
+
+        <py-repl>
+confirmed_cases = confirmed_cases.groupby('Country/Region').sum()
+confirmed_cases
+        </py-repl>
+
+        <py-repl>
+confirmed_cases.columns = pd.to_datetime(confirmed_cases.columns)
+confirmed_cases
+        </py-repl>
+
+        <py-repl>
+confirmed_cases = confirmed_cases.transpose()
+confirmed_cases.index.name = 'date'
+confirmed_cases
+        </py-repl>
+
+        <py-repl>
+# countries to show in below, 
+# please refer `confirmed_cases.columns` to find valid representation of Country/Region
+countries = [
+    'Taiwan*', 
+    'Japan', 
+    'Korea, South', 
+    'US', 
+    'China', 
+    'Singapore'
+]
+confirmed_cases = confirmed_cases[countries]
+confirmed_cases
+        </py-repl>
+
+        <py-repl>
+figsize = (12, 12 * 2 / (1 + 5**0.5))
+confirmed_cases.plot(
+    figsize=figsize,
+    title='Total Confirmed Cases',
+)
+plt
+        </py-repl>
+
+        <py-repl>
+figsize = (12, 12 * 2 / (1 + 5**0.5))
+confirmed_cases.apply(np.log).plot(
+    figsize=figsize,
+    title='Total Confirmed Cases',
+)
+plt
+        </py-repl>
+
+        <py-repl>
+cases_diff = confirmed_cases.diff()
+cases_diff
+        </py-repl>
+cases_diff.apply(np.log).plot(
+    figsize=figsize,
+    title='New Cases Per Day',
+)
+plt
+        <py-repl>
+cases_diff = cases_diff.rolling(window=7, win_type=None).mean()
+cases_diff.apply(np.log).plot(
+    figsize=figsize,
+    title='New Cases Per Day after Smoothing (Smoothed)',
+)
+plt
+        </py-repl>
+
+        <py-repl>
+plt.figure(figsize=figsize)
+plt.title('Trajectory of Confirmed Cases')
+plt.xlabel('Logarithm of total cases')
+plt.ylabel('Logarithm of new cases')
+plt.xlim((0, 20))
+plt.ylim((-2.5, 17.5))
+for col in confirmed_cases.columns:
+    plt.plot(
+        confirmed_cases[col].apply(np.log), 
+        cases_diff[col].apply(np.log),
+        label=col,
+    )
+plt.plot([2,18], [0, 16], linestyle='--')
+plt.legend()
+plt
+        </py-repl>
+
+        <py-repl>
+import altair as alt
+
+# load a simple dataset as a pandas DataFrame
+from vega_datasets import data
+cars = data.cars()
+
+alt.Chart(cars).mark_point().encode(
+    x='Horsepower',
+    y='Miles_per_Gallon',
+    color='Origin',
+).interactive()
+        </py-repl>
+
+        <py-repl>
+diff_melt = cases_diff.reset_index().melt(id_vars=['date'])
+diff_melt['value'] = diff_melt['value'].apply(np.log)
+diff_melt
+        </py-repl>
+
+        <py-repl>
+cases_melt = confirmed_cases.reset_index().melt(id_vars=['date'])
+cases_melt['value'] = cases_melt['value'].apply(np.log)
+cases_melt
+        </py-repl>
+
+        <py-repl>
+source = diff_melt.join(cases_melt['value'], lsuffix='_y', rsuffix='_x').dropna()
+source
+        </py-repl>
+
+        <py-repl>
+highlight = alt.selection(type='single', on='mouseover',
+fields=['Country/Region'], nearest=True)
+
+base = alt.Chart(source).encode(
+x='value_x:Q',
+y='value_y:Q',
+color='Country/Region:N'
+)
+
+points = base.mark_circle().encode(
+opacity=alt.value(0)
+).add_selection(
+highlight
+).properties(
+width=800,
+height=500
+)
+
+lines = base.mark_line().encode(
+size=alt.condition(~highlight, alt.value(1), alt.value(5))
+)
+
+points + lines
+        </py-repl>
+
+        <py-repl auto-generate="true"></py-repl>
+    </body>
+</html>
+<!-- Adapted by Mat Miller -->
